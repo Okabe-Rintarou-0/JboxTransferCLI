@@ -22,11 +22,31 @@
     ./jtrans logout
     ```
 
-+ 同步所有文件：
++ 同步文件：
+  + 同步所有文件
   
     ```shell
     ./jtrans sync --all
     ```
+
+  + 递归地同步某个文件夹
+
+    ```shell
+    ./jtrans sync -d REMOTE_DIR_PATH -r
+    ```
+
+  + 查看任务队列
+    ```shell
+    # 只显示待完成的任务
+    ./jtrans sync tasks
+    # 显示全部任务
+    ./jtrans sync tasks --show-finished
+    # 降序排列
+    ./jtrans sync tasks --order desc
+    # 限制最大行数
+    ./jtrans sync tasks --max 10
+    ```
+
 
 + 清除同步任务：
 
