@@ -182,6 +182,42 @@ func syncAllItems(jcli jbox.IClient, tcli tbox.IClient, ignores *ignore.GitIgnor
 	return syncDirectoryRecursively(jcli, tcli, "/", ignores)
 }
 
+func syncQueueItems(jcli jbox.IClient, tcli tbox.IClient, ignores *ignore.GitIgnore) error {
+	tasks := db.FindIdleTasks()
+	var err error
+	var filtered []*dbmodels.FileSyncTask
+
+	for _, task := range tasks {
+		if ignores != nil && ignores.MatchesPath(task.FilePath) {
+			fmt.Printf("根据\"%s\"配置，文件（目录）\"%s\"将被忽略！\n", syncIgnorePath, task.FilePath)
+		} else {
+			filtered = append(filtered, task)
+		}
+	}
+
+	if len(filtered) == 0 {
+		fmt.Println("没有可执行的同步任务！")
+		return nil
+	}
+
+	for _, task := range filtered {
+		if task.Type == dbmodels.File {
+			err = syncFile(jcli, tcli, task.FilePath, ignores)
+		} else {
+			if syncRecursively {
+				err = syncDirectoryRecursively(jcli, tcli, task.FilePath, ignores)
+			} else {
+				err = syncDirectory(jcli, tcli, task.FilePath, ignores)
+			}
+		}
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+	}
+
+	return nil
+}
+
 func init() {
 	syncCmd = &cobra.Command{
 		Use:   "sync",
@@ -213,8 +249,8 @@ func init() {
 			} else if len(syncFilePath) > 0 {
 				err = syncFile(jcli, tcli, syncFilePath, ignores)
 			} else {
-				fmt.Println("请指定同步文件或目录！")
-				os.Exit(1)
+				fmt.Println("开始完成队列中剩余的同步任务...")
+				err = syncQueueItems(jcli, tcli, ignores)
 			}
 			if err != nil {
 				fmt.Println(err.Error())

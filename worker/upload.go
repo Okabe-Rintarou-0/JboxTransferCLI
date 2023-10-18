@@ -2,12 +2,13 @@ package worker
 
 import (
 	"fmt"
-	"github.com/spf13/cast"
 	"jtrans/constants"
 	"jtrans/tbox"
 	tmodels "jtrans/tbox/models"
 	"jtrans/utils"
 	"time"
+
+	"github.com/spf13/cast"
 )
 
 type TBoxUploadState int
@@ -136,6 +137,10 @@ func (w *TBoxUploadWorker) GetNextPart() (*TBoxUploadPartEntry, error) {
 }
 
 func (w *TBoxUploadWorker) EnsureNoExpire(partNumber int64) error {
+	if w.ctx.Expiration == "" {
+		return nil
+	}
+
 	exp, err := time.Parse(time.RFC3339, w.ctx.Expiration)
 	if err != nil {
 		return err

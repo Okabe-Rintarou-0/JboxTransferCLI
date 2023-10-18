@@ -49,6 +49,17 @@ func GetMaxOrder() int {
 	return 0
 }
 
+func GetAllOrderedByOrder(descend bool) []*models.FileSyncTask {
+	var files []*models.FileSyncTask
+	f := query.Use(db).FileSyncTask
+	if descend {
+		files, _ = f.WithContext(ctx).Order(f.Order.Desc()).Find()
+	} else {
+		files, _ = f.WithContext(ctx).Order(f.Order).Find()
+	}
+	return files
+}
+
 func Update(task *models.FileSyncTask) error {
 	f := query.Use(db).FileSyncTask
 	return f.WithContext(ctx).Save(task)
