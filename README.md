@@ -70,15 +70,15 @@
 
     + 下载文件并计算其 md5 校验和：
         ```shell
-        ./jtrans jbox download FILE_PATH | ./jtrans md5
+        ./jtrans jbox download FILE_PATH --bytes | ./jtrans md5
         ```
     + 下载文件并计算其 crc64 校验和：
         ```shell
-        ./jtrans jbox download FILE_PATH | ./jtrans crc64
+        ./jtrans jbox download FILE_PATH --bytes | ./jtrans crc64
         ```
     + 下载文件并上传：
         ```shell
-        ./jtrans jbox download FILE_PATH | ./jtrans tbox upload -t REMOTE_PATH
+        ./jtrans jbox download FILE_PATH --bytes | ./jtrans tbox upload --bytes -t REMOTE_PATH
         ```
 
 + 更多操作请见：
