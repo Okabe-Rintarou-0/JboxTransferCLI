@@ -185,6 +185,7 @@ func (w *FileSyncWorker) internalStart() error {
 			w.refreshBar(curChunkSize, fmt.Sprintf("[cyan][%d/%d][reset] [red]%s[reset] 下载分块...", chunkNo, w.chunkCount, w.GetFormatedFileName()))
 			err = w.uploader.EnsureNoExpire(chunkNo)
 			if err != nil {
+				fmt.Println("error!!!", err)
 				continue
 			}
 			chunkData, err = w.downloader.GetChunk(chunkNo)
