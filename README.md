@@ -1,6 +1,12 @@
 # Jbox Transfer CLI
 
-[JboxTransfer](https://github.com/1357310795/JboxTransfer) 配套 CLI 程序，基于 golang 开发。
+<img src="https://img.shields.io/badge/go-1.19-blue" alt="">
+
+[JboxTransfer](https://github.com/1357310795/JboxTransfer) 配套 CLI 程序，基于 golang 开发。欢迎提出 issues 和 pr。
+
+# 下载及安装
+
+见 Release。
 
 # 如何使用
 
@@ -51,6 +57,13 @@
     ```shell
     ./jtrans tbox info FILE_PATH
     ./jtrans jbox info FILE_PATH
+    ```
+
++ 列出文件夹下的文件
+  
+    ```shell
+    ./jtrans tbox ls REMOTE_DIR_PATH
+    ./jtrans jbox ls REMOTE_DIR_PATH
     ```
 
 + 一些比较 geek 的操作
