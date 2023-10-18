@@ -1,6 +1,10 @@
-# Jbox Transfer CLI
-
-<img src="https://img.shields.io/badge/go-1.19-blue" alt="">
+![](https://s2.loli.net/2023/10/18/RHFsPnmcJ5IUWAE.png)
+<p align="center">
+  <img align="center" src="https://img.shields.io/badge/go-1.19-blue" alt="">
+  <img align="center" src="https://img.shields.io/github/stars/Okabe-Rintarou-0/JboxTransferCLI" /> 
+  <img align="center" src="https://img.shields.io/github/v/release/Okabe-Rintarou-0/JboxTransferCLI?include_prereleases" /> 
+  <img align="center" src="https://img.shields.io/github/downloads/Okabe-Rintarou-0/JboxTransferCLI/total" />
+</p>
 
 [JboxTransfer](https://github.com/1357310795/JboxTransfer) 配套 CLI 程序，基于 golang 开发。欢迎提出 issues 和 pr。
 
