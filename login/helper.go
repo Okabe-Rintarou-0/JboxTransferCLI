@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"jtrans/db"
 	"jtrans/jbox"
+	jmodels "jtrans/jbox/models"
 	"jtrans/login/models"
 	"jtrans/tbox"
 	"jtrans/utils"
@@ -40,6 +42,9 @@ const (
 func init() {
 	jar, _ := cookiejar.New(nil)
 	cli = &http.Client{Jar: jar}
+
+	// prepare for the user db
+	prepareDB()
 }
 
 func Login(method Method) error {
@@ -59,14 +64,34 @@ func Login(method Method) error {
 	return nil
 }
 
-func GetClient() (jbox.IClient, tbox.IClient, error) {
+func prepareDB() {
+	session, err := GetSession()
+	if err != nil {
+		return
+	}
+
+	// init user db
+	db.Init(fmt.Sprintf("./%s.db", session.Username))
+}
+
+func GetSession() (*models.Session, error) {
 	file, err := os.Open(SessionPath)
 	if file == nil || err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	decoder := json.NewDecoder(file)
 	session := models.Session{}
 	err = decoder.Decode(&session)
+	return &session, err
+}
+
+func CheckLogin() bool {
+	_, _, err := GetClient()
+	return err == nil
+}
+
+func GetClient() (jbox.IClient, tbox.IClient, error) {
+	session, err := GetSession()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -141,20 +166,46 @@ func checkUserInfo() error {
 	return nil
 }
 
+func getUserName(cookies string) (string, error) {
+	cli.Jar.SetCookies(authUrl, []*http.Cookie{
+		{Name: "JAAuthCookie", Value: cookies},
+	})
+	cookiesMap := utils.FromCookiesString(cookies)
+	resp, err := cli.Get(fmt.Sprintf("https://jbox.sjtu.edu.cn/v2/user/info/get?S=%s", cookiesMap["S"]))
+	if err != nil {
+		return "", err
+	}
+	info := jmodels.UserInfo{}
+	err = utils.UnmarshalJson[jmodels.UserInfo](resp, &info)
+	if err != nil {
+		return "", err
+	}
+
+	return info.UserSlug, nil
+}
+
 func validate(jaAuthCookie string) (*models.Session, error) {
 	var (
 		err         error
 		jboxCookies string
 		userToken   string
+		username    string
 	)
 	// err = checkUserInfo()
 	// if err != nil {
 	// 	return nil, fmt.Errorf("验证失败：%s", err.Error())
 	// }
+
+	// check jbox login
 	jboxCookies, err = loginJbox(jaAuthCookie)
 	if err != nil {
 		return nil, fmt.Errorf("jbox认证失败：%s", err.Error())
 	}
+
+	// get username
+	username, err = getUserName(jboxCookies)
+
+	// check tbox login
 	userToken, err = loginTbox(jaAuthCookie)
 	if err != nil {
 		return nil, fmt.Errorf("tbox认证失败：%s", err.Error())
@@ -163,6 +214,7 @@ func validate(jaAuthCookie string) (*models.Session, error) {
 	return &models.Session{
 		JboxCookies: jboxCookies,
 		UserToken:   userToken,
+		Username:    username,
 	}, nil
 }
 

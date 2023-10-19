@@ -10,7 +10,10 @@
 
 # 下载及安装
 
-见 Release。
+见 [Release](https://github.com/Okabe-Rintarou-0/JboxTransferCLI/releases)。
+
+# 注意⚠️
+在使用过程中，会在当前目录生成一个名为 `session.json` 的文件，该文件包含了登录会话信息，为了保证功能的正常使用，请勿修改。同时，也不要将该文件轻易分享给他人，避免个人信息泄露。
 
 # 如何使用
 
@@ -23,6 +26,11 @@
     由于二维码依赖于终端字体大小，其大小不可控，请最大化终端，并打开微信进行扫码登录：
     
     ![login](./images/login_w_qrcode.png)
+
++ 复制 `JAAuthCookie` 登录:
+    JAAuthCookie 是交大一切网址的“登录通行证”，你可以通过以下方式获得它，并按照 `./jtrans login` 提供的指示粘贴它，并按下回车以进行登录。
+
+    ![login](./images/login_w_cookie.png)
 
 + 登出：
 
@@ -78,6 +86,12 @@
 
     ```shell
     ./jtrans tbox upload -f LOCAL_PATH -t REMOTE_PATH
+    ```
+
++ 在新云盘创建目录：
+    
+    ```shell
+    ./jtrans tbox mkdir DIR_PATH
     ```
 
 + 查看文件信息：

@@ -3,7 +3,9 @@ package transfer
 import (
 	"fmt"
 	"jtrans/db"
+	"jtrans/login"
 	"jtrans/utils"
+	"os"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
@@ -68,6 +70,11 @@ func init() {
 		Short: "查看同步队列文件",
 		Long:  "查看同步队列文件",
 		Run: func(cmd *cobra.Command, args []string) {
+			if !login.CheckLogin() {
+				fmt.Println(NotLoginHint)
+				os.Exit(1)
+			}
+
 			printTaskQueue()
 		},
 	}

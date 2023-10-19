@@ -11,17 +11,22 @@ import (
 )
 
 const (
-	FilePath = "./sqlite.db"
+	defaultFilePath = "./sqlite.db"
 )
 
 var (
-	ctx = context.Background()
-	db  *gorm.DB
+	ctx      = context.Background()
+	db       *gorm.DB
+	FilePath = defaultFilePath
 )
 
-func init() {
+func Init(filePath string) {
+	if filePath != "" {
+		FilePath = filePath
+	}
+
 	var err error
-	db, err = gorm.Open(sqlite.Open(FilePath), &gorm.Config{
+	db, err = gorm.Open(sqlite.Open(filePath), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
 	})
 	if err != nil {
