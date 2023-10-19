@@ -28,6 +28,7 @@
     ![login](./images/login_w_qrcode.png)
 
 + 复制 `JAAuthCookie` 登录:
+
     JAAuthCookie 是交大一切网址的“登录通行证”，你可以通过以下方式获得它，并按照 `./jtrans login` 提供的指示粘贴它，并按下回车以进行登录。
 
     ![login](./images/login_w_cookie.png)
