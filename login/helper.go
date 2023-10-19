@@ -5,10 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	qrcodeTerminal "github.com/Baozisoftware/qrcode-terminal-go"
-	"github.com/PuerkitoBio/goquery"
-	"github.com/gorilla/websocket"
-	"github.com/tuotoo/qrcode"
 	"io"
 	"jtrans/jbox"
 	"jtrans/login/models"
@@ -20,6 +16,10 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	qrcodeTerminal "github.com/Baozisoftware/qrcode-terminal-go"
+	"github.com/PuerkitoBio/goquery"
+	"github.com/gorilla/websocket"
 )
 
 var (
@@ -28,7 +28,6 @@ var (
 
 const (
 	SessionPath = "./session.json"
-	QRCodePath  = "./qrcode.png"
 )
 
 type Method = int
@@ -148,10 +147,10 @@ func validate(jaAuthCookie string) (*models.Session, error) {
 		jboxCookies string
 		userToken   string
 	)
-	//err = checkUserInfo()
-	//if err != nil {
-	//	return nil, fmt.Errorf("验证失败：%s", err.Error())
-	//}
+	// err = checkUserInfo()
+	// if err != nil {
+	// 	return nil, fmt.Errorf("验证失败：%s", err.Error())
+	// }
 	jboxCookies, err = loginJbox(jaAuthCookie)
 	if err != nil {
 		return nil, fmt.Errorf("jbox认证失败：%s", err.Error())
@@ -248,42 +247,12 @@ func initWebsocket(uuid string) (*websocket.Conn, error) {
 }
 
 func getQRCodeURL(uuid, sig string, ts int64) string {
-	return fmt.Sprintf("https://jaccount.sjtu.edu.cn/jaccount/qrcode?uuid=%s&ts=%d&sig=%s", uuid, ts, sig)
+	return fmt.Sprintf("https://jaccount.sjtu.edu.cn/jaccount/confirmscancode?uuid=%s&ts=%d&sig=%s", uuid, ts, sig)
 }
 
-func downloadQRCodeURL(qrcodeURL string) error {
-	file, err := os.OpenFile(QRCodePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	resp, err := cli.Get(qrcodeURL)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("服务器返回状态：%d", resp.StatusCode)
-	}
-
-	_, err = io.Copy(file, resp.Body)
-	return err
-}
-
-func showQRCode(filePath string) error {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	qrmatrix, err := qrcode.Decode(file)
-	if err != nil {
-		return err
-	}
+func showQRCode(content string) error {
 	obj := qrcodeTerminal.New()
-	obj.Get(qrmatrix.Content).Print()
+	obj.Get(content).Print()
 	return nil
 }
 
@@ -363,12 +332,7 @@ func qrcodeLogin() error {
 		tp = strings.ToUpper(payload.Type)
 		if tp == "UPDATE_QR_CODE" {
 			qrcodeURL := getQRCodeURL(uuid, payload.Payload.Sig, payload.Payload.Ts)
-			fmt.Printf("正在下载二维码...")
-			if err = downloadQRCodeURL(qrcodeURL); err != nil {
-				return err
-			}
-			fmt.Println("完毕")
-			if err = showQRCode(QRCodePath); err != nil {
+			if err = showQRCode(qrcodeURL); err != nil {
 				return err
 			}
 			fmt.Println("请扫码登录！")

@@ -20,6 +20,10 @@
     ./jtrans login --qrcode
     ```
 
+    由于二维码依赖于终端字体大小，其大小不可控，请最大化终端，并打开微信进行扫码登录：
+    
+    ![login](./images/login_w_qrcode.png)
+
 + 登出：
 
     ```shell
@@ -33,13 +37,13 @@
     ./jtrans sync --all
     ```
 
-  + 递归地同步某个文件夹
+  + 递归地同步某个文件夹：
 
     ```shell
     ./jtrans sync -d REMOTE_DIR_PATH -r
     ```
 
-  + 查看任务队列
+  + 查看任务队列：
     ```shell
     # 只显示待完成的任务
     ./jtrans sync tasks
@@ -64,33 +68,33 @@
     ./jtrans diff
     ```
 
-+ 下载单个文件
++ 下载单个文件：
 
     ```shell
     ./jtrans jbox download FILE_PATH
     ```
 
-+ 上传单个文件
++ 上传单个文件：
 
     ```shell
     ./jtrans tbox upload -f LOCAL_PATH -t REMOTE_PATH
     ```
 
-+ 查看文件信息
++ 查看文件信息：
   
     ```shell
     ./jtrans tbox info FILE_PATH
     ./jtrans jbox info FILE_PATH
     ```
 
-+ 列出文件夹下的文件
++ 列出文件夹下的文件：
   
     ```shell
     ./jtrans tbox ls REMOTE_DIR_PATH
     ./jtrans jbox ls REMOTE_DIR_PATH
     ```
 
-+ 一些比较 geek 的操作
++ 一些比较 geek 的操作：
 
     + 下载文件并计算其 md5 校验和：
         ```shell
@@ -104,6 +108,13 @@
         ```shell
         ./jtrans jbox download FILE_PATH --bytes | ./jtrans tbox upload --bytes -t REMOTE_PATH
         ```
+
++ 配置黑白名单：
+    支持采用 Gitignore 形式的文件来配置同步黑白名单，例如下面的文件：
+    ```
+    *.docx
+    ```
+    将不会同步任何以 docx 为扩展名的文件。
 
 + 更多操作请见：
 

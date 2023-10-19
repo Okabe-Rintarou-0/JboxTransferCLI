@@ -11,7 +11,6 @@ require (
 	github.com/schollz/progressbar/v3 v3.13.1
 	github.com/spf13/cast v1.5.1
 	github.com/spf13/cobra v1.7.0
-	github.com/tuotoo/qrcode v0.0.0-20220425170535-52ccc2bebf5d
 	gorm.io/driver/sqlite v1.5.3
 	gorm.io/gen v0.3.23
 	gorm.io/gorm v1.25.4
@@ -21,12 +20,10 @@ require (
 require (
 	github.com/andybalholm/cascadia v1.3.2 // indirect
 	github.com/go-sql-driver/mysql v1.7.1 // indirect
-	github.com/google/uuid v1.3.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	github.com/maruel/rs v1.1.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
@@ -45,5 +42,4 @@ require (
 	gorm.io/datatypes v1.1.1-0.20230130040222-c43177d3cf8c // indirect
 	gorm.io/driver/mysql v1.5.1 // indirect
 	gorm.io/hints v1.1.0 // indirect
-	rsc.io/qr v0.2.0 // indirect
 )
