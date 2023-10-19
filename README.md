@@ -40,10 +40,18 @@
     ```
 
 + 同步文件：
-  + 同步所有文件
+  + 同步所有文件：
   
     ```shell
     ./jtrans sync --all
+    ```
+
+  + 继续同步任务：
+    ```shell
+    # 非递归
+    ./jtrans sync
+    # 递归
+    ./jtrans sync -r
     ```
 
   + 递归地同步某个文件夹：

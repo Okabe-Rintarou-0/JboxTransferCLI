@@ -152,6 +152,7 @@ func (w *TBoxUploadWorker) EnsureNoExpire(partNumber int64) error {
 		if err != nil {
 			return fmt.Errorf("刷新分块凭据出错: %s", err.Error())
 		}
+		w.ctx = ctx
 	}
 	partKey := cast.ToString(partNumber)
 	if _, ok := w.ctx.Parts[partKey]; !ok {
@@ -159,9 +160,10 @@ func (w *TBoxUploadWorker) EnsureNoExpire(partNumber int64) error {
 		if err != nil {
 			return fmt.Errorf("刷新分块凭据出错: %s", err.Error())
 		}
+		w.ctx = ctx
 	}
-	w.ctx = ctx
-	if _, ok := ctx.Parts[partKey]; !ok {
+
+	if _, ok := w.ctx.Parts[partKey]; !ok {
 		return fmt.Errorf("已刷新上传凭据，但是未找到块 %d 的信息", partNumber)
 	}
 	return nil
