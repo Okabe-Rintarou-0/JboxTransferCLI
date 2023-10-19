@@ -1,10 +1,11 @@
 package main
 
 import (
-	"gorm.io/driver/sqlite"
+	"jtrans/db/models"
+
+	"github.com/glebarez/sqlite"
 	"gorm.io/gen"
 	"gorm.io/gorm"
-	"jtrans/db/models"
 )
 
 func main() {

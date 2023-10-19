@@ -5,7 +5,7 @@ import (
 	"jtrans/db/models"
 	"jtrans/db/query"
 
-	"gorm.io/driver/sqlite"
+	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
