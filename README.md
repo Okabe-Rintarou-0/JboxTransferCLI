@@ -44,6 +44,9 @@
   
     ```shell
     ./jtrans sync --all
+    # 多线（协）程同步
+    # 使用四个协程
+    ./jtrans sync --all -w4
     ```
 
   + 继续同步任务：
