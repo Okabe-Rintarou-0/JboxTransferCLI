@@ -90,6 +90,40 @@ func FindByPath(path string) *models.FileSyncTask {
 	return task
 }
 
+func FindFailedTasks() []*models.FileSyncTask {
+	f := query.Use(db).FileSyncTask
+	tasks, _ := f.WithContext(ctx).Where(f.State.Eq(models.Error)).Order(f.Order).Find()
+	return tasks
+}
+
+func RecoverFailedTasks(paths []string) {
+	f := query.Use(db).FileSyncTask
+	f.WithContext(ctx).Where(f.FilePath.In(paths...), f.State.Eq(models.Error)).Update(f.State, models.Idle)
+}
+
+func RecoverAllFailedTasks() {
+	f := query.Use(db).FileSyncTask
+	f.WithContext(ctx).Where(f.State.Eq(models.Error)).Update(f.State, models.Idle)
+}
+
+func RestartFailedTasks(paths []string) {
+	f := query.Use(db).FileSyncTask
+	f.WithContext(ctx).Where(f.FilePath.In(paths...), f.State.Eq(models.Error)).Updates(map[string]any{
+		"State":       models.Idle,
+		"ConfirmKey":  "",
+		"RemainParts": "",
+	})
+}
+
+func RestartAllFailedTasks() {
+	f := query.Use(db).FileSyncTask
+	f.WithContext(ctx).Where(f.State.Eq(models.Error)).Updates(map[string]any{
+		"State":       models.Idle,
+		"ConfirmKey":  "",
+		"RemainParts": "",
+	})
+}
+
 func FindIdleTasks() []*models.FileSyncTask {
 	f := query.Use(db).FileSyncTask
 	tasks, _ := f.WithContext(ctx).Where(f.State.Eq(models.Idle)).Order(f.Order).Find()

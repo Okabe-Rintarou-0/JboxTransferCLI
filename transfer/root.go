@@ -22,6 +22,8 @@ func initCmd() {
 
 	syncCmd.AddCommand(clearCmd)
 	syncCmd.AddCommand(syncTasksCmd)
+	syncCmd.AddCommand(syncRecoverCmd)
+	syncCmd.AddCommand(syncRestartCmd)
 
 	jboxCmd.AddCommand(downloadCmd)
 	jboxCmd.AddCommand(listJboxCmd)
