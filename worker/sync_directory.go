@@ -2,16 +2,14 @@ package worker
 
 import (
 	"fmt"
+	"jtrans/bar"
 	"jtrans/db"
 	dbmodels "jtrans/db/models"
 	"jtrans/jbox"
 	jmodels "jtrans/jbox/models"
 	"jtrans/tbox"
-	"jtrans/utils"
 	"strings"
-	"unicode/utf8"
 
-	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cast"
 )
 
@@ -26,11 +24,11 @@ type DirectorySyncWorker struct {
 	tcli       tbox.IClient
 	jcli       jbox.IClient
 	state      SyncTaskState
-	bar        *progressbar.ProgressBar
+	bar        bar.IManager
 	dbModel    *dbmodels.FileSyncTask
 }
 
-func newDirectorySyncWorker(jcli jbox.IClient, tcli tbox.IClient, path string, bar *progressbar.ProgressBar) *DirectorySyncWorker {
+func newDirectorySyncWorker(jcli jbox.IClient, tcli tbox.IClient, path string, bar bar.IManager) *DirectorySyncWorker {
 	return &DirectorySyncWorker{
 		retryTimes: 3,
 		path:       path,
@@ -45,7 +43,7 @@ func newDirectorySyncWorker(jcli jbox.IClient, tcli tbox.IClient, path string, b
 	}
 }
 
-func NewDirectorySyncWorkerFromDBModel(jcli jbox.IClient, tcli tbox.IClient, model *dbmodels.FileSyncTask, bar *progressbar.ProgressBar) *DirectorySyncWorker {
+func NewDirectorySyncWorkerFromDBModel(jcli jbox.IClient, tcli tbox.IClient, model *dbmodels.FileSyncTask, bar bar.IManager) *DirectorySyncWorker {
 	w := newDirectorySyncWorker(jcli, tcli, model.FilePath, bar)
 	w.dbModel = model
 	if len(model.RemainParts) > 0 {
@@ -64,14 +62,6 @@ func (w *DirectorySyncWorker) GetName() string {
 	return name
 }
 
-func (w *DirectorySyncWorker) GetFormatedFileName() string {
-	name := w.GetName()
-	if utf8.RuneCountInString(name) > 10 {
-		return utils.Utf8Substr(name, 0, 10) + "..."
-	}
-	return name
-}
-
 func (w *DirectorySyncWorker) GetPath() string {
 	return w.path
 }
@@ -83,19 +73,11 @@ func (w *DirectorySyncWorker) GetParentPath() string {
 }
 
 func (w *DirectorySyncWorker) Start() error {
-	fmt.Printf("同步目录\"%s\"...", w.path)
 	if err := w.internalStart(); err != nil {
-		fmt.Println(err.Error())
+		w.bar.Error(w.dbModel)
 		return err
 	}
-	fmt.Println("完毕！")
 	return nil
-}
-
-func (w *DirectorySyncWorker) refreshBar(max int, desc string) {
-	w.bar.Reset()
-	w.bar.ChangeMax(max)
-	w.bar.Describe(desc)
 }
 
 func (w *DirectorySyncWorker) handleError() {
@@ -112,6 +94,8 @@ func (w *DirectorySyncWorker) handleComplete() {
 
 func (w *DirectorySyncWorker) internalStart() error {
 	w.state = SyncRunning
+	w.dbModel.State = dbmodels.Busy
+	w.bar.Prepare(w.dbModel)
 	res, err := w.tcli.CreateDirectory(w.path)
 	if err != nil {
 		if res == nil {
@@ -142,7 +126,6 @@ func (w *DirectorySyncWorker) internalStart() error {
 			tx := db.Begin()
 			for _, file := range w.jboxDir.Content {
 				tx = tx.Create(dbmodels.FromJBoxFileInfo(&file.FileInfo, order))
-				w.bar.Add(1)
 			}
 			if w.page != cast.ToInt(w.dbModel.RemainParts) {
 				w.dbModel.RemainParts = cast.ToString(w.page)
@@ -165,5 +148,6 @@ func (w *DirectorySyncWorker) internalStart() error {
 	}
 
 	w.handleComplete()
+	w.bar.Finish(w.dbModel)
 	return nil
 }

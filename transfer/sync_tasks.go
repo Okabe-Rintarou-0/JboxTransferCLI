@@ -3,6 +3,7 @@ package transfer
 import (
 	"fmt"
 	"jtrans/db"
+	"jtrans/db/models"
 	"jtrans/login"
 	"jtrans/utils"
 	"os"
@@ -44,11 +45,11 @@ func printTaskQueue() {
 	}
 	rows := 0
 	for _, task := range tasks {
-		if task.State == 3 && !showFinished {
+		if task.State == models.Done && !showFinished {
 			continue
 		}
 		fileType := "文件"
-		if task.Type == 1 {
+		if task.IsDir() {
 			fileType = "目录"
 		}
 		state := stateMap[task.State]

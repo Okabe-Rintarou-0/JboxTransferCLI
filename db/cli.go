@@ -130,6 +130,12 @@ func FindIdleTasks() []*models.FileSyncTask {
 	return tasks
 }
 
+func FindExecutableTasks() []*models.FileSyncTask {
+	f := query.Use(db).FileSyncTask
+	tasks, _ := f.WithContext(ctx).Where(f.State.Eq(models.Idle)).Or(f.State.Eq(models.Busy)).Order(f.Order).Find()
+	return tasks
+}
+
 func FindIdleTasksWithSmallerOrder(order int) []*models.FileSyncTask {
 	f := query.Use(db).FileSyncTask
 	tasks, _ := f.WithContext(ctx).Where(f.State.Eq(models.Idle), f.Order.Lt(order)).Find()

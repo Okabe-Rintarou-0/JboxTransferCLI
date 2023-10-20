@@ -6,7 +6,7 @@
   <img align="center" src="https://img.shields.io/github/downloads/Okabe-Rintarou-0/JboxTransferCLI/total" />
 </p>
 
-[JboxTransfer](https://github.com/1357310795/JboxTransfer) 配套 CLI 程序，基于 golang 开发。欢迎提出 issues 和 pr。
+[JboxTransfer](https://github.com/1357310795/JboxTransfer) 配套 CLI 程序，基于 golang 开发。欢迎提出 issues 和 pr。开发不易，点个 star 支持一下吧～
 
 # 下载及安装
 

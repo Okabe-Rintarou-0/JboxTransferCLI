@@ -3,6 +3,7 @@ package worker
 import (
 	"encoding/json"
 	"fmt"
+	"jtrans/bar"
 	"jtrans/constants"
 	"jtrans/db"
 	dbmodels "jtrans/db/models"
@@ -12,9 +13,7 @@ import (
 	"jtrans/tbox/models"
 	"jtrans/utils"
 	"strings"
-	"unicode/utf8"
 
-	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cast"
 )
 
@@ -33,10 +32,10 @@ type FileSyncWorker struct {
 	crc64      *encrypt.CRC64
 	md5        *encrypt.MD5
 
-	bar *progressbar.ProgressBar
+	bar bar.IManager
 }
 
-func newFileSyncWorker(jcli jbox.IClient, path, hash string, size int64, bar *progressbar.ProgressBar) *FileSyncWorker {
+func newFileSyncWorker(jcli jbox.IClient, path, hash string, size int64, bar bar.IManager) *FileSyncWorker {
 	return &FileSyncWorker{
 		path:       path,
 		jboxhash:   hash,
@@ -45,20 +44,20 @@ func newFileSyncWorker(jcli jbox.IClient, path, hash string, size int64, bar *pr
 		succChunk:  0,
 		state:      SyncWait,
 		downloader: NewJBoxDownloadWorker(jcli, path, size, func(downloaded int64, total int64) {
-			_ = bar.Set64(downloaded)
+			bar.Set64(path, downloaded, total)
 		}),
 		retryTimes: 3,
 		bar:        bar,
 	}
 }
 
-func NewFileSyncWorkerFromDBModel(jcli jbox.IClient, tcli tbox.IClient, model *dbmodels.FileSyncTask, bar *progressbar.ProgressBar) *FileSyncWorker {
+func NewFileSyncWorkerFromDBModel(jcli jbox.IClient, tcli tbox.IClient, model *dbmodels.FileSyncTask, bar bar.IManager) *FileSyncWorker {
 	w := newFileSyncWorker(jcli, model.FilePath, model.MD5Ori, model.Size, bar)
 	w.dbModel = model
 	if model.ConfirmKey == "" {
 		w.crc64 = encrypt.NewCRC64()
 		w.uploader = NewTBoxUploadWorker(tcli, w.path, w.size, func(uploaded int64, total int64) {
-			_ = w.bar.Set64(uploaded)
+			w.bar.Set64(w.path, uploaded, total)
 		})
 		w.md5 = encrypt.NewMD5()
 	} else {
@@ -67,7 +66,7 @@ func NewFileSyncWorkerFromDBModel(jcli jbox.IClient, tcli tbox.IClient, model *d
 		_ = json.Unmarshal([]byte(model.RemainParts), &remains)
 		w.succChunk = w.chunkCount - cast.ToInt64(len(remains))
 		w.uploader = NewTBoxUploadWorkerForRenewing(tcli, w.path, w.size, model.ConfirmKey, remains, func(uploaded int64, total int64) {
-			_ = w.bar.Set64(uploaded)
+			w.bar.Set64(w.path, uploaded, total)
 		})
 		storage := encrypt.MD5StateStorage{}
 		_ = json.Unmarshal([]byte(model.MD5Part), &storage)
@@ -79,14 +78,6 @@ func NewFileSyncWorkerFromDBModel(jcli jbox.IClient, tcli tbox.IClient, model *d
 func (w *FileSyncWorker) GetName() string {
 	parts := strings.Split(w.path, "/")
 	name := parts[len(parts)-1]
-	return name
-}
-
-func (w *FileSyncWorker) GetFormatedFileName() string {
-	name := w.GetName()
-	if utf8.RuneCountInString(name) > 10 {
-		return utils.Utf8Substr(name, 0, 10) + "..."
-	}
 	return name
 }
 
@@ -102,16 +93,10 @@ func (w *FileSyncWorker) GetParentPath() string {
 
 func (w *FileSyncWorker) Start() error {
 	if err := w.internalStart(); err != nil {
-		fmt.Println(err.Error())
+		w.bar.Error(w.dbModel)
 		return err
 	}
 	return nil
-}
-
-func (w *FileSyncWorker) refreshBar(max int64, desc string) {
-	w.bar.Reset()
-	w.bar.ChangeMax64(max)
-	w.bar.Describe(desc)
 }
 
 func (w *FileSyncWorker) handleError() {
@@ -144,16 +129,16 @@ func (w *FileSyncWorker) internalStart() error {
 		chunkData     []byte
 		confirmResult *models.ConfirmChunkUploadResult
 	)
+	w.bar.Prepare(w.dbModel)
 
 	w.state = SyncRunning
-	fmt.Printf("同步文件 \"%s\"，共有%d个分块，剩余%d个分块\n", w.GetName(), w.chunkCount, w.chunkCount-w.succChunk)
-	fmt.Printf("正在准备上传...")
+	w.dbModel.State = dbmodels.Busy
+	// fmt.Printf("同步文件 \"%s\"，共有%d个分块，剩余%d个分块\n", w.GetName(), w.chunkCount, w.chunkCount-w.succChunk)
 	err = w.uploader.PrepareForUpload()
 	if err != nil {
 		w.handleError()
 		return err
 	}
-	fmt.Println("完毕")
 
 	w.curChunk, err = w.uploader.GetNextPart()
 	if err != nil {
@@ -182,7 +167,7 @@ func (w *FileSyncWorker) internalStart() error {
 		for t > 0 {
 			t -= 1
 
-			w.refreshBar(curChunkSize, fmt.Sprintf("[cyan][%d/%d][reset] [red]%s[reset] 下载分块...", chunkNo, w.chunkCount, w.GetFormatedFileName()))
+			w.bar.PrepareDownloadChunk(curChunkSize, chunkNo, w.chunkCount, w.dbModel)
 			err = w.uploader.EnsureNoExpire(chunkNo)
 			if err != nil {
 				continue
@@ -193,7 +178,7 @@ func (w *FileSyncWorker) internalStart() error {
 				continue
 			}
 
-			w.refreshBar(curChunkSize, fmt.Sprintf("[cyan][%d/%d][reset] [red]%s[reset] 上传分块...", chunkNo, w.chunkCount, w.GetFormatedFileName()))
+			w.bar.PrepareUploadChunk(curChunkSize, chunkNo, w.chunkCount, w.dbModel)
 			err = w.uploader.Upload(chunkData, chunkNo)
 			if err != nil {
 				err = fmt.Errorf("上传块 %d 发生错误：%s", chunkNo, err.Error())
@@ -233,8 +218,7 @@ func (w *FileSyncWorker) internalStart() error {
 			return fmt.Errorf("获取下一块发生错误：%s", err.Error())
 		}
 	}
-	fmt.Println("完成！")
-	fmt.Printf("正在计算文件校验和...")
+
 	actualHash := encrypt.MD5HashProcFinish(w.md5)
 	actualCRC64 := w.crc64.TransformFinalBlock()
 	if w.succChunk == w.chunkCount && w.curChunk == nil {
@@ -248,10 +232,9 @@ func (w *FileSyncWorker) internalStart() error {
 			return fmt.Errorf("校验和不匹配！%s %s", actualHash, w.jboxhash)
 		}
 		w.handleComplete()
-		fmt.Println("完毕")
-		fmt.Println("同步成功！")
+		w.bar.Finish(w.dbModel)
 	} else {
-		fmt.Println("同步失败！")
+		return fmt.Errorf("同步失败！")
 	}
 	return nil
 }

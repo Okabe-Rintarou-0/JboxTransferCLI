@@ -86,14 +86,14 @@ func (c *Client) DownloadChunk(path string, start, size int64, onProgress models
 	var downloaded int64 = 0
 	for {
 		bytesRead, err = io.CopyN(dst, resp.Body, bufferSize)
+		downloaded += bytesRead
+		onProgress(downloaded, size)
 		if bytesRead == 0 || errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
 			return nil, err
 		}
-		downloaded += bytesRead
-		onProgress(downloaded, size)
 	}
 	return dst.Bytes(), nil
 }

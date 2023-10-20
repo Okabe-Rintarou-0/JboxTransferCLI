@@ -2,18 +2,19 @@ package transfer
 
 import (
 	"fmt"
-	"jtrans/constants"
+	"jtrans/bar"
 	"jtrans/db"
+	"jtrans/db/models"
 	dbmodels "jtrans/db/models"
 	"jtrans/jbox"
 	"jtrans/login"
 	"jtrans/tbox"
+	"jtrans/utils"
 	"jtrans/worker"
 	"os"
+	"sync"
 
 	ignore "github.com/sabhiram/go-gitignore"
-	"github.com/schollz/progressbar/v3"
-	"github.com/spf13/cast"
 	"github.com/spf13/cobra"
 )
 
@@ -28,33 +29,35 @@ var (
 	useBfs          bool
 	useDfs          bool
 
-	syncFileBar = progressbar.NewOptions(
-		cast.ToInt(constants.ChunkSize),
-		progressbar.OptionEnableColorCodes(true),
-		progressbar.OptionShowBytes(true),
-		progressbar.OptionSetWidth(10),
-		// progressbar.OptionSetTheme(progressbar.Theme{
-		// 	Saucer:        "[green]=[reset]",
-		// 	SaucerHead:    "[green]>[reset]",
-		// 	SaucerPadding: " ",
-		// 	BarStart:      "[",
-		// 	BarEnd:        "]",
-		// }),
-		// progressbar.OptionFullWidth(),
-	)
-	syncDirBar = progressbar.NewOptions(
-		cast.ToInt(constants.ChunkSize),
-		progressbar.OptionEnableColorCodes(true),
-		progressbar.OptionShowBytes(false),
-		progressbar.OptionSetWidth(10),
-	)
+	numWorkers int
+	pbar       bar.IManager
+
+	syncErrors []error
+	errMtx     = sync.Mutex{}
+
+	workerChan chan worker.IWorker
+	wg         sync.WaitGroup
 )
+
+func printErrors() {
+	fmt.Println("同步过程中发生的错误：")
+	for _, err := range syncErrors {
+		fmt.Println(err.Error())
+	}
+}
+
+func getBarManager() bar.IManager {
+	if numWorkers > 1 {
+		return bar.NewMultipleBarManager(numWorkers)
+	}
+	return bar.NewSingleBarManager()
+}
 
 func syncDirectory(jcli jbox.IClient, tcli tbox.IClient, dirPath string, ignores *ignore.GitIgnore) error {
 	dirPath = formatPath(dirPath)
 	order := db.GetMinOrder() - 1
 	if ignores != nil && ignores.MatchesPath(dirPath) {
-		fmt.Printf("根据\"%s\"配置，目录\"%s\"将被忽略！\n", syncIgnorePath, syncDirPath)
+		// fmt.Printf("根据\"%s\"配置，目录\"%s\"将被忽略！\n", syncIgnorePath, syncDirPath)
 		return nil
 	}
 	model := db.FindByPath(dirPath)
@@ -76,7 +79,7 @@ func syncDirectory(jcli jbox.IClient, tcli tbox.IClient, dirPath string, ignores
 		return fmt.Errorf("指定的目录\"%s\"已同步", dirPath)
 	}
 
-	syncWorker := worker.NewDirectorySyncWorkerFromDBModel(jcli, tcli, model, syncDirBar)
+	syncWorker := worker.NewDirectorySyncWorkerFromDBModel(jcli, tcli, model, pbar)
 	return syncWorker.Start()
 }
 
@@ -84,7 +87,8 @@ func syncFile(jcli jbox.IClient, tcli tbox.IClient, filePath string, ignores *ig
 	filePath = formatPath(filePath)
 	order := db.GetMinOrder() - 1
 	if ignores != nil && ignores.MatchesPath(filePath) {
-		return fmt.Errorf("根据\"%s\"配置，文件\"%s\"将被忽略！", syncIgnorePath, filePath)
+		// return fmt.Errorf("根据\"%s\"配置，文件\"%s\"将被忽略！", syncIgnorePath, filePath)
+		return nil
 	}
 	model := db.FindByPath(filePath)
 	if model == nil {
@@ -97,7 +101,15 @@ func syncFile(jcli jbox.IClient, tcli tbox.IClient, filePath string, ignores *ig
 	if model.State == dbmodels.Done {
 		return fmt.Errorf("指定的文件\"%s\"已同步", filePath)
 	}
-	syncWorker := worker.NewFileSyncWorkerFromDBModel(jcli, tcli, model, syncFileBar)
+	syncWorker := worker.NewFileSyncWorkerFromDBModel(jcli, tcli, model, pbar)
+	if numWorkers > 1 {
+		model.State = models.Busy
+		if err := db.Update(model); err != nil {
+			return err
+		}
+		workerChan <- syncWorker
+		return nil
+	}
 	return syncWorker.Start()
 }
 
@@ -113,7 +125,7 @@ func syncDirectoryInnerDfs(jcli jbox.IClient, tcli tbox.IClient, dir string, ign
 		var filtered []*dbmodels.FileSyncTask
 		for _, task := range tasks {
 			if ignores != nil && ignores.MatchesPath(task.FilePath) {
-				fmt.Printf("根据\"%s\"配置，文件（目录）\"%s\"将被忽略！\n", syncIgnorePath, task.FilePath)
+				// fmt.Printf("根据\"%s\"配置，文件（目录）\"%s\"将被忽略！\n", syncIgnorePath, task.FilePath)
 			} else {
 				filtered = append(filtered, task)
 			}
@@ -124,13 +136,13 @@ func syncDirectoryInnerDfs(jcli jbox.IClient, tcli tbox.IClient, dir string, ign
 		}
 
 		for _, task := range filtered {
-			if task.Type == dbmodels.File {
+			if task.IsFile() {
 				err = syncFile(jcli, tcli, task.FilePath, ignores)
 			} else {
 				err = syncDirectoryInnerDfs(jcli, tcli, task.FilePath, ignores)
 			}
 			if err != nil {
-				fmt.Println(err.Error())
+				syncErrors = append(syncErrors, err)
 			}
 		}
 	}
@@ -147,7 +159,7 @@ func syncDirectoryInnerBfs(jcli jbox.IClient, tcli tbox.IClient, dir string, ign
 		var filtered []*dbmodels.FileSyncTask
 		for _, task := range tasks {
 			if ignores != nil && ignores.MatchesPath(task.FilePath) {
-				fmt.Printf("根据\"%s\"配置，文件（目录）\"%s\"将被忽略！\n", syncIgnorePath, task.FilePath)
+				// fmt.Printf("根据\"%s\"配置，文件（目录）\"%s\"将被忽略！\n", syncIgnorePath, task.FilePath)
 			} else {
 				filtered = append(filtered, task)
 			}
@@ -158,13 +170,13 @@ func syncDirectoryInnerBfs(jcli jbox.IClient, tcli tbox.IClient, dir string, ign
 		}
 
 		for _, task := range filtered {
-			if task.Type == dbmodels.File {
+			if task.IsFile() {
 				err = syncFile(jcli, tcli, task.FilePath, ignores)
 			} else {
 				err = syncDirectory(jcli, tcli, task.FilePath, ignores)
 			}
 			if err != nil {
-				fmt.Println(err.Error())
+				syncErrors = append(syncErrors, err)
 			}
 		}
 	}
@@ -183,13 +195,15 @@ func syncAllItems(jcli jbox.IClient, tcli tbox.IClient, ignores *ignore.GitIgnor
 }
 
 func syncQueueItems(jcli jbox.IClient, tcli tbox.IClient, ignores *ignore.GitIgnore) error {
-	tasks := db.FindIdleTasks()
-	var err error
-	var filtered []*dbmodels.FileSyncTask
+	var (
+		err      error
+		filtered []*dbmodels.FileSyncTask
+	)
+	tasks := db.FindExecutableTasks()
 
 	for _, task := range tasks {
 		if ignores != nil && ignores.MatchesPath(task.FilePath) {
-			fmt.Printf("根据\"%s\"配置，文件（目录）\"%s\"将被忽略！\n", syncIgnorePath, task.FilePath)
+			// fmt.Printf("根据\"%s\"配置，文件（目录）\"%s\"将被忽略！\n", syncIgnorePath, task.FilePath)
 		} else {
 			filtered = append(filtered, task)
 		}
@@ -201,7 +215,7 @@ func syncQueueItems(jcli jbox.IClient, tcli tbox.IClient, ignores *ignore.GitIgn
 	}
 
 	for _, task := range filtered {
-		if task.Type == dbmodels.File {
+		if task.IsFile() {
 			err = syncFile(jcli, tcli, task.FilePath, ignores)
 		} else {
 			if syncRecursively {
@@ -211,11 +225,30 @@ func syncQueueItems(jcli jbox.IClient, tcli tbox.IClient, ignores *ignore.GitIgn
 			}
 		}
 		if err != nil {
-			fmt.Println(err.Error())
+			syncErrors = append(syncErrors, err)
 		}
 	}
 
 	return nil
+}
+
+func parallelWork() {
+	workerChan = make(chan worker.IWorker, numWorkers)
+	wg = sync.WaitGroup{}
+	wg.Add(numWorkers)
+	for i := 0; i < numWorkers; i++ {
+		go func() {
+			var err error
+			for worker := range workerChan {
+				if err = worker.Start(); err != nil {
+					errMtx.Lock()
+					syncErrors = append(syncErrors, err)
+					errMtx.Unlock()
+				}
+			}
+			wg.Done()
+		}()
+	}
 }
 
 func init() {
@@ -238,6 +271,13 @@ func init() {
 					os.Exit(1)
 				}
 			}
+
+			numWorkers = utils.Max(numWorkers, 1)
+			if numWorkers > 1 {
+				parallelWork()
+			}
+			pbar = getBarManager()
+
 			if syncAll {
 				err = syncAllItems(jcli, tcli, ignores)
 			} else if len(syncDirPath) > 0 {
@@ -253,7 +293,16 @@ func init() {
 				err = syncQueueItems(jcli, tcli, ignores)
 			}
 			if err != nil {
-				fmt.Println(err.Error())
+				syncErrors = append(syncErrors, err)
+			}
+
+			if numWorkers > 1 {
+				close(workerChan)
+				wg.Wait()
+			}
+
+			if len(syncErrors) > 0 {
+				printErrors()
 				os.Exit(1)
 			}
 		},
@@ -263,5 +312,6 @@ func init() {
 	syncCmd.Flags().BoolVarP(&syncAll, "all", "A", false, "同步所有文件和目录")
 	syncCmd.Flags().StringVarP(&syncFilePath, "file", "f", "", "指定同步文件")
 	syncCmd.Flags().StringVarP(&syncDirPath, "dir", "d", "", "指定同步目录")
+	syncCmd.Flags().IntVarP(&numWorkers, "workers", "w", 1, "指定 workers 数量")
 	syncCmd.Flags().StringVarP(&syncIgnorePath, "ignore", "", "", "指定 .ignore 文件的路径")
 }

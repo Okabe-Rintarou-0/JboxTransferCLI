@@ -1,6 +1,8 @@
 package models
 
 import (
+	"encoding/json"
+	"jtrans/constants"
 	"jtrans/jbox/models"
 	"jtrans/utils"
 )
@@ -45,6 +47,28 @@ type FileSyncTask struct {
 	MD5Ori      string `gorm:"column:MD5_Ori"`
 	CRC64Part   int64  `gorm:"column:CRC64_Part"`
 	RemainParts string `gorm:"column:RemainParts"`
+}
+
+func (t *FileSyncTask) IsDir() bool {
+	return t.Type == Directory
+}
+
+func (t *FileSyncTask) IsFile() bool {
+	return t.Type == File
+}
+
+func (t *FileSyncTask) GetCompletedSize() int64 {
+	var parts []int64
+	err := json.Unmarshal([]byte(t.RemainParts), &parts)
+	if err != nil {
+		return 0
+	}
+
+	var succCount int64 = 0
+	if len(parts) > 0 {
+		succCount = parts[0]
+	}
+	return succCount * constants.ChunkSize
 }
 
 func NewFileSyncTask(fileType int, path string, size int64, order int, hash string) *FileSyncTask {
