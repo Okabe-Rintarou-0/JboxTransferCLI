@@ -22,6 +22,7 @@ type IClient interface {
 		pagination *models.PaginationOption,
 		order *models.OrderOption,
 		filter string) (*models.DirectoryInfo, error)
+	BatchMove(fromPaths []string, toPath string) (*models.BatchMoveResult, error)
 }
 
 type Client struct {

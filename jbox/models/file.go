@@ -46,3 +46,53 @@ type DirectoryInfo struct {
 	FileInfo
 	Content []*DirectoryInfo `json:"content,omitempty"`
 }
+
+type BatchMoveData struct {
+	To        ToData     `json:"to"`
+	From      []FromData `json:"from"`
+	OtherData string     `json:"other_data"`
+}
+
+type FromData struct {
+	Root     string `json:"root"`
+	Rev      string `json:"rev"`
+	Path     string `json:"path"`
+	PathType string `json:"path_type"`
+	From     string `json:"from"`
+	Nsid     int64  `json:"nsid"`
+	Neid     string `json:"neid"`
+}
+
+type ToData struct {
+	Root     string `json:"root"`
+	Path     string `json:"path"`
+	PathType string `json:"path_type"`
+	From     string `json:"from"`
+	Neid     string `json:"neid"`
+	Nsid     int64  `json:"nsid"`
+}
+
+type BatchMoveResult struct {
+	Result   string               `json:"result"`
+	TaskID   string               `json:"task_id"`
+	TaskType int64                `json:"task_type"`
+	Success  []BatchMoveFileEntry `json:"success"`
+	Failed   []BatchMoveFileEntry `json:"failed"`
+}
+
+type BatchMoveFileEntry struct {
+	Result  string                 `json:"result"`
+	Neid    float64                `json:"neid"`
+	Path    string                 `json:"path"`
+	Nsid    int64                  `json:"nsid"`
+	JSON    BatchMoveFileEntryJSON `json:"json"`
+	NewNeid float64                `json:"newNeid"`
+	NewPath string                 `json:"newPath"`
+}
+
+type BatchMoveFileEntryJSON struct {
+	Result string  `json:"result"`
+	Neid   float64 `json:"neid"`
+	Path   string  `json:"path"`
+	Nsid   int64   `json:"nsid"`
+}

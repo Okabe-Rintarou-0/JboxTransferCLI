@@ -2,11 +2,12 @@ package utils
 
 import (
 	"encoding/json"
-	"github.com/spf13/cast"
 	"io"
 	"jtrans/tbox/models"
 	"net/http"
 	"strings"
+
+	"github.com/spf13/cast"
 )
 
 func DoRequest(method string, url string, headers map[string]string, query map[string]string, body io.Reader) (*http.Response, error) {

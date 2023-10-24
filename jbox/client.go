@@ -1,7 +1,8 @@
 package jbox
 
 import (
-	"github.com/spf13/cast"
+	"bytes"
+	"encoding/json"
 	"io"
 	"jtrans/jbox/models"
 	"jtrans/utils"
@@ -9,6 +10,8 @@ import (
 	urllib "net/url"
 	"strings"
 	"time"
+
+	"github.com/spf13/cast"
 )
 
 type IClient interface {
@@ -18,6 +21,7 @@ type IClient interface {
 	GetDirectoryInfo(targetPath string, page int) (*models.DirectoryInfo, error)
 	GetChunk(path string, chunkNo, chunkSize int64, onProgress models.DownloadProgressHandler) ([]byte, error)
 	DownloadChunk(path string, start, size int64, onProgress models.DownloadProgressHandler) ([]byte, error)
+	BatchMove(fromPaths []string, toPath string) (*models.BatchMoveResult, error)
 }
 
 type Client struct {
@@ -57,6 +61,19 @@ func (c *Client) postRequest(url string, query map[string]string, body io.Reader
 	return utils.DoRequest(http.MethodPost, c.baseUrl+url, c.headers, query, body)
 }
 
+func (c *Client) postJson(url string, query map[string]string, body any) (*http.Response, error) {
+	headers := map[string]string{}
+	for k, v := range c.headers {
+		headers[k] = v
+	}
+	headers["Content-Type"] = "application/json"
+	marshalled, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	return utils.DoRequest(http.MethodPost, url, headers, query, bytes.NewReader(marshalled))
+}
+
 func (c *Client) postUrlEncoded(url string, query map[string]string, data map[string]string) (*http.Response, error) {
 	headers := map[string]string{}
 	for k, v := range c.headers {
@@ -67,7 +84,7 @@ func (c *Client) postUrlEncoded(url string, query map[string]string, data map[st
 	for k, v := range data {
 		body.Add(k, v)
 	}
-	return utils.DoRequest(http.MethodPost, c.baseUrl+url, headers, query, strings.NewReader(body.Encode()))
+	return utils.DoRequest(http.MethodPost, url, headers, query, strings.NewReader(body.Encode()))
 }
 
 func (c *Client) getRequest(url string, headers map[string]string, query map[string]string) (*http.Response, error) {

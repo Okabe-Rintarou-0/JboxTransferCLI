@@ -109,3 +109,23 @@ type ChunkUploadPart struct {
 	ETag         string `json:"ETag"`
 	LastModified string `json:"LastModified"`
 }
+
+type BatchMoveData struct {
+	From                       string `json:"from"`
+	To                         string `json:"to"`
+	Type                       string `json:"type"`
+	ConflictResolutionStrategy string `json:"conflictResolutionStrategy"`
+	MoveAuthority              bool   `json:"moveAuthority"`
+}
+
+type BatchMoveResult struct {
+	Result []BatchMoveResultEntry `json:"result"`
+}
+
+type BatchMoveResultEntry struct {
+	To            []string `json:"to"`
+	From          []string `json:"from"`
+	Path          []string `json:"path"`
+	Status        int64    `json:"status"`
+	MoveAuthority bool     `json:"moveAuthority"`
+}

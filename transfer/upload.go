@@ -118,6 +118,9 @@ func init() {
 				fmt.Println("使用 stdin 字节流上传必须指定保存路径！")
 				os.Exit(1)
 			}
+			if len(uploadTo) == 0 {
+				uploadTo = uploadFrom
+			}
 			uploadTo = formatPath(uploadTo)
 
 			_, tcli, err := login.GetClient()

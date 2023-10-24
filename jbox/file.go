@@ -2,6 +2,7 @@ package jbox
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -13,7 +14,7 @@ import (
 )
 
 func (c *Client) GetDirectoryInfo(targetPath string, page int) (*models.DirectoryInfo, error) {
-	url := "/v2/metadata_page/databox"
+	url := c.baseUrl + "/v2/metadata_page/databox"
 	data := map[string]string{
 		"path_type":   "self",
 		"target_path": targetPath,
@@ -96,4 +97,66 @@ func (c *Client) DownloadChunk(path string, start, size int64, onProgress models
 		}
 	}
 	return dst.Bytes(), nil
+}
+
+func (c *Client) BatchMove(fromPaths []string, toPath string) (*models.BatchMoveResult, error) {
+	url := c.baseUrl + "/v2/fileops/batch_move"
+
+	dirInfo, err := c.GetDirectoryInfo(toPath, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	data := models.BatchMoveData{
+		To: models.ToData{
+			Root:     "databox",
+			Path:     toPath,
+			PathType: "self",
+			Neid:     dirInfo.Neid,
+			Nsid:     dirInfo.Nsid,
+		},
+		From: []models.FromData{},
+	}
+
+	for _, fromPath := range fromPaths {
+		fileInfo, err := c.GetFileInfo(fromPath)
+		if err != nil {
+			return nil, err
+		}
+		data.From = append(data.From, models.FromData{
+			Root:     "databox",
+			Path:     fromPath,
+			PathType: "self",
+			Nsid:     fileInfo.Nsid,
+			Neid:     fileInfo.Neid,
+		})
+	}
+
+	marshalled, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.postUrlEncoded(url, map[string]string{
+		"S":          c.S,
+		"uid":        cast.ToString(c.uid),
+		"account_id": "1",
+	}, map[string]string{
+		"json": string(marshalled),
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if !utils.IsSuccessStatusCode(resp.StatusCode) {
+		return nil, fmt.Errorf("服务器响应%d", resp.StatusCode)
+	}
+
+	result := models.BatchMoveResult{}
+	err = utils.UnmarshalJson[models.BatchMoveResult](resp, &result)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
 }

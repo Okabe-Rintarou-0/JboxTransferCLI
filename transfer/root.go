@@ -28,11 +28,13 @@ func initCmd() {
 	jboxCmd.AddCommand(downloadCmd)
 	jboxCmd.AddCommand(listJboxCmd)
 	jboxCmd.AddCommand(infoJboxCmd)
+	jboxCmd.AddCommand(jboxMvCmd)
 
 	tboxCmd.AddCommand(uploadCmd)
 	tboxCmd.AddCommand(listTboxCmd)
 	tboxCmd.AddCommand(mkdirCmd)
 	tboxCmd.AddCommand(infoTboxCmd)
+	tboxCmd.AddCommand(tboxMvCmd)
 }
 
 func Execute() {

@@ -106,6 +106,14 @@
     ./jtrans tbox mkdir DIR_PATH
     ```
 
++ 移动文件或目录：
+    ```shell
+    # 旧版云盘
+    ./jtrans jbox mv SRC1 SRC2 ... TARGET
+    # 新版云盘
+    ./jtrans tbox mv SRC1 SRC2 ... TARGET
+    ```
+
 + 查看文件信息：
   
     ```shell

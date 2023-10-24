@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"jtrans/tbox/models"
 	"jtrans/utils"
+	urllib "net/url"
 
 	"github.com/spf13/cast"
 )
@@ -188,4 +189,51 @@ func (c *Client) GetFileInfo(filePath string) (*models.FileInfo, error) {
 	info := models.FileInfo{}
 	err = utils.UnmarshalJson[models.FileInfo](resp, &info)
 	return &info, err
+}
+
+func (c *Client) BatchMove(fromPaths []string, toPath string) (*models.BatchMoveResult, error) {
+	url := c.baseUrl + fmt.Sprintf("/api/v1/batch/%s/%s", c.libraryId, c.spaceId)
+	query := map[string]string{
+		"move":         "",
+		"access_token": c.accessToken,
+	}
+
+	datas := []*models.BatchMoveData{}
+	for _, fromPath := range fromPaths {
+		to, err := urllib.JoinPath(toPath, utils.GetFileName(fromPath))
+		if err != nil {
+			return nil, err
+		}
+
+		fileInfo, err := c.GetFileInfo(fromPath)
+		if err != nil {
+			return nil, err
+		}
+
+		isDir := fileInfo.IsDir()
+		tp := ""
+		if !isDir {
+			tp = "file"
+		}
+		datas = append(datas, &models.BatchMoveData{
+			From:                       fromPath,
+			To:                         to,
+			Type:                       tp,
+			ConflictResolutionStrategy: "rename",
+			MoveAuthority:              isDir,
+		})
+	}
+
+	resp, err := c.postJson(url, query, datas)
+	if err != nil {
+		return nil, err
+	}
+
+	if !utils.IsSuccessStatusCode(resp.StatusCode) {
+		return nil, fmt.Errorf("服务器响应%d", resp.StatusCode)
+	}
+
+	result := models.BatchMoveResult{}
+	err = utils.UnmarshalJson[models.BatchMoveResult](resp, &result)
+	return &result, err
 }
