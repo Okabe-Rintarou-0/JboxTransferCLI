@@ -11,8 +11,7 @@ func init() {
 		Use:   "tbox",
 		Short: "tbox 相关指令",
 		Long:  "tbox 相关指令",
-		Run: func(cmd *cobra.Command, args []string) {
-
-		},
+		Args:  cobra.NoArgs,
+		Run:   func(cmd *cobra.Command, args []string) {},
 	}
 }

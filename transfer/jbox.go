@@ -11,8 +11,7 @@ func init() {
 		Use:   "jbox",
 		Short: "jbox 相关指令",
 		Long:  "jbox 相关指令",
-		Run: func(cmd *cobra.Command, args []string) {
-
-		},
+		Args:  cobra.NoArgs,
+		Run:   func(cmd *cobra.Command, args []string) {},
 	}
 }

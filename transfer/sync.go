@@ -256,6 +256,7 @@ func init() {
 		Use:   "sync",
 		Short: "同步文件",
 		Long:  "同步文件",
+		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
 			var ignores *ignore.GitIgnore
 			jcli, tcli, err := login.GetClient()
