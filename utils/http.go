@@ -87,7 +87,9 @@ func (s *RequestStream) Read(p []byte) (n int, err error) {
 
 	copy(p, s.data[s.curIndex:s.curIndex+size])
 	s.curIndex += size
-	s.onProgress(cast.ToInt64(s.curIndex), cast.ToInt64(s.total))
+	if s.onProgress != nil {
+		s.onProgress(cast.ToInt64(s.curIndex), cast.ToInt64(s.total))
+	}
 	return size, nil
 }
 
