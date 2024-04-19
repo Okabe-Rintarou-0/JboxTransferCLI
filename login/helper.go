@@ -16,11 +16,11 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
 	qrcodeTerminal "github.com/Baozisoftware/qrcode-terminal-go"
-	"github.com/PuerkitoBio/goquery"
 	"github.com/gorilla/websocket"
 )
 
@@ -274,18 +274,17 @@ func getUuid() (string, error) {
 	}
 
 	defer resp.Body.Close()
-	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	var bytes []byte
+	bytes, err = io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}
-	node := doc.Find("input[type=hidden][name=uuid]")
-	if node == nil {
+	pattern := regexp.MustCompile("uuid=([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})")
+	result := pattern.FindAllStringSubmatch(string(bytes), -1)
+	if result == nil || len(result[0]) < 2 {
 		return "", fmt.Errorf("没有找到 uuid")
 	}
-	uuid, exists := node.Attr("value")
-	if !exists {
-		return "", fmt.Errorf("没有找到 uuid")
-	}
+	uuid := result[0][1]
 	return uuid, nil
 }
 
